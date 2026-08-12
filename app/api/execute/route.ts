@@ -3,7 +3,6 @@ import * as vm from "node:vm";
 import * as cheerio from "cheerio";
 
 interface ExecuteRequestBody {
-  inputMode: "html" | "json";
   rawInput: string;
   requestJson: string;
   extractorCode: string;
@@ -25,7 +24,7 @@ function formatLogArg(arg: unknown): string {
 
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as ExecuteRequestBody;
-  const { inputMode, rawInput, requestJson, extractorCode } = body;
+  const { rawInput, requestJson, extractorCode } = body;
 
   const logs: LogEntry[] = [];
   const makeLogger = (level: LogEntry["level"]) =>
@@ -33,14 +32,21 @@ export async function POST(req: NextRequest) {
       logs.push({ level, message: args.map(formatLogArg).join(" ") });
     };
 
+  // Autodetect the input type: if it parses as JSON, treat it as JSON; otherwise treat it as HTML.
   let responseBody: unknown;
+  let isJson = true;
   try {
-    responseBody = inputMode === "json" ? JSON.parse(rawInput) : cheerio.load(rawInput);
-  } catch (err) {
-    return NextResponse.json(
-      { result: null, logs, error: `Failed to parse input as JSON: ${(err as Error).message}` },
-      { status: 200 }
-    );
+    responseBody = JSON.parse(rawInput);
+  } catch {
+    isJson = false;
+    try {
+      responseBody = cheerio.load(rawInput);
+    } catch (err) {
+      return NextResponse.json(
+        { result: null, logs, error: `Failed to parse input as HTML: ${(err as Error).message}` },
+        { status: 200 }
+      );
+    }
   }
 
   let requestObj: unknown;
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
 
   const sandbox: Record<string, unknown> = {
     cheerio,
-    $: inputMode === "html" ? responseBody : undefined,
+    $: isJson ? undefined : responseBody,
     console: {
       log: makeLogger("log"),
       warn: makeLogger("warn"),
