@@ -6,16 +6,30 @@ const SNAPSHOTS_KEY = "sitecore-extractor-snapshots";
 
 const DEFAULT_EXTRACTOR = `function extract(request, response) {
     // response.body is your HTML string or parsed JSON object
-    // for HTML, you can do: const $ = cheerio.load(response.body);
+    // for HTML, you can do: const $ = response.body;
 
-    var retVal = [];
+    $ = response.body;
 
-    return retVal;
+    return {
+        title: $('#title').text().trim()
+    };
+
+    /* Example - return an array
+
+      var retVal = [];
+      
+      retVal.push( {
+        title: $('#title').text().trim()
+      });
+      
+      return retVal;
+    */
 }`;
 
 const DEFAULT_HTML = `<html>
   <body>
     <h1>Sample Title</h1>
+    <div id="title">Title</div>
     <p class="description">Sample description text.</p>
   </body>
 </html>`;
@@ -70,10 +84,13 @@ export default function Home() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [snapshotName, setSnapshotName] = useState("");
   const [selectedSnapshotId, setSelectedSnapshotId] = useState("");
+  const [extractorDirty, setExtractorDirty] = useState(false);
 
   useEffect(() => {
     setSnapshots(loadSnapshots());
   }, []);
+
+  const selectedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId) ?? null;
 
   function saveSnapshot() {
     const name = snapshotName.trim();
@@ -104,6 +121,7 @@ export default function Home() {
     setSnapshots(next);
     persistSnapshots(next);
     setSelectedSnapshotId(newSnapshot.id);
+    setExtractorDirty(false);
   }
 
   function loadSnapshot() {
@@ -113,6 +131,24 @@ export default function Home() {
     setRawInput(snapshot.rawInput);
     setRequestJson(snapshot.requestJson);
     setExtractorCode(snapshot.extractorCode);
+    setExtractorDirty(false);
+  }
+
+  function updateSelectedSnapshot() {
+    if (!selectedSnapshot) return;
+
+    const updated: Snapshot = {
+      ...selectedSnapshot,
+      inputMode,
+      rawInput,
+      requestJson,
+      extractorCode,
+    };
+
+    const next = snapshots.map((s) => (s.id === selectedSnapshot.id ? updated : s));
+    setSnapshots(next);
+    persistSnapshots(next);
+    setExtractorDirty(false);
   }
 
   function renameSnapshot() {
@@ -145,6 +181,7 @@ export default function Home() {
     setSnapshots(next);
     persistSnapshots(next);
     setSelectedSnapshotId("");
+    setExtractorDirty(false);
   }
 
   function saveResultToFile() {
@@ -204,7 +241,10 @@ export default function Home() {
           <select
             className="snapshot-select"
             value={selectedSnapshotId}
-            onChange={(e) => setSelectedSnapshotId(e.target.value)}
+            onChange={(e) => {
+              setSelectedSnapshotId(e.target.value);
+              setExtractorDirty(false);
+            }}
           >
             <option value="">Select a snapshot…</option>
             {snapshots.map((s) => (
@@ -275,11 +315,24 @@ export default function Home() {
         <section className="panel wide">
           <div className="panel-header">
             <h2>Extractor function</h2>
+            {selectedSnapshot && (
+              <button
+                className="save-button"
+                onClick={updateSelectedSnapshot}
+                disabled={!extractorDirty}
+                title={`Update snapshot "${selectedSnapshot.name}" with the current extractor function`}
+              >
+                Update Snapshot
+              </button>
+            )}
           </div>
           <textarea
             className="code-input tall"
             value={extractorCode}
-            onChange={(e) => setExtractorCode(e.target.value)}
+            onChange={(e) => {
+              setExtractorCode(e.target.value);
+              setExtractorDirty(true);
+            }}
             spellCheck={false}
           />
         </section>

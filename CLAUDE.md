@@ -12,7 +12,7 @@ The app lets you paste an `extract(request, response)` function plus sample HTML
 
 ## Structure
 
-- [app/page.tsx](app/page.tsx) — the entire UI: input/request/extractor text areas, run button, result/console output panels, and the snapshot save/load/rename/delete toolbar. Client component (`"use client"`), all state is local `useState`.
+- [app/page.tsx](app/page.tsx) — the entire UI: input/request/extractor text areas, run button, result/console output panels, the snapshot save/load/rename/delete toolbar, and an Update Snapshot button on the extractor panel. Client component (`"use client"`), all state is local `useState`.
 - [app/api/execute/route.ts](app/api/execute/route.ts) — `POST` endpoint that actually runs the extractor. Parses the input, builds a `node:vm` sandbox exposing `cheerio`, a pre-loaded `$`, and a `console` that captures log/warn/error into an array instead of printing, evaluates the extractor code, and calls `extract(requestObj, { body: responseBody })`. Returns `{ result, logs, error }` — errors are returned as `200` responses with an `error` string, not HTTP error codes.
 - [app/layout.tsx](app/layout.tsx) — root layout, imports `globals.css`.
 - [app/globals.css](app/globals.css) — all styling (dark VS Code–like theme); class-based, no CSS modules.
@@ -33,6 +33,8 @@ When changing extractor execution behavior, keep both invocation styles (`$` glo
 ## Snapshots (localStorage)
 
 Save/load/rename/delete of full debugging sessions (input mode, raw input, request JSON, extractor code) is implemented entirely in [app/page.tsx](app/page.tsx) against `localStorage` under the key `sitecore-extractor-snapshots` — no backend involved. Renaming/saving over an existing name prompts for confirmation via `window.confirm` before overwriting.
+
+The "Extractor function" panel also has an **Update Snapshot** button for quickly persisting extractor-code edits back to the currently selected snapshot without going through rename/overwrite. Its enabled state is driven by an explicit `extractorDirty` boolean, not a derived comparison against the selected snapshot's stored code — a derived comparison would flip the button on/off based on how the newly selected snapshot's code happens to differ from whatever is currently in the textarea, rather than reflecting real user edits. `extractorDirty` is set `true` only by typing in the extractor textarea, and reset `false` on dropdown selection change, Load, Update, and Delete. Keep this behavior when touching the snapshot toolbar.
 
 ## Local resources
 
