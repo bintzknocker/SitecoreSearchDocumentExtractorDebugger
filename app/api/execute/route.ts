@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   let responseBody: unknown;
   try {
-    responseBody = inputMode === "json" ? JSON.parse(rawInput) : rawInput;
+    responseBody = inputMode === "json" ? JSON.parse(rawInput) : cheerio.load(rawInput);
   } catch (err) {
     return NextResponse.json(
       { result: null, logs, error: `Failed to parse input as JSON: ${(err as Error).message}` },
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
 
   const sandbox: Record<string, unknown> = {
     cheerio,
+    $: inputMode === "html" ? responseBody : undefined,
     console: {
       log: makeLogger("log"),
       warn: makeLogger("warn"),
