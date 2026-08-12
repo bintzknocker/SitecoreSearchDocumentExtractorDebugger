@@ -34,8 +34,6 @@ const DEFAULT_HTML = `<html>
   </body>
 </html>`;
 
-type InputMode = "html" | "json";
-
 interface LogEntry {
   level: "log" | "warn" | "error";
   message: string;
@@ -51,7 +49,6 @@ interface Snapshot {
   id: string;
   name: string;
   createdAt: number;
-  inputMode: InputMode;
   rawInput: string;
   requestJson: string;
   extractorCode: string;
@@ -74,7 +71,6 @@ function persistSnapshots(snapshots: Snapshot[]) {
 }
 
 export default function Home() {
-  const [inputMode, setInputMode] = useState<InputMode>("html");
   const [rawInput, setRawInput] = useState(DEFAULT_HTML);
   const [requestJson, setRequestJson] = useState("{}");
   const [extractorCode, setExtractorCode] = useState(DEFAULT_EXTRACTOR);
@@ -92,6 +88,15 @@ export default function Home() {
 
   const selectedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId) ?? null;
 
+  const detectedInputType = (() => {
+    try {
+      JSON.parse(rawInput);
+      return "JSON";
+    } catch {
+      return "HTML";
+    }
+  })();
+
   function saveSnapshot() {
     const name = snapshotName.trim();
     if (!name) return;
@@ -108,7 +113,6 @@ export default function Home() {
       id: existing?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       name,
       createdAt: Date.now(),
-      inputMode,
       rawInput,
       requestJson,
       extractorCode,
@@ -127,11 +131,11 @@ export default function Home() {
   function loadSnapshot() {
     const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
     if (!snapshot) return;
-    setInputMode(snapshot.inputMode);
     setRawInput(snapshot.rawInput);
     setRequestJson(snapshot.requestJson);
     setExtractorCode(snapshot.extractorCode);
     setExtractorDirty(false);
+    setResponse(null);
   }
 
   function updateSelectedSnapshot() {
@@ -139,7 +143,6 @@ export default function Home() {
 
     const updated: Snapshot = {
       ...selectedSnapshot,
-      inputMode,
       rawInput,
       requestJson,
       extractorCode,
@@ -208,7 +211,7 @@ export default function Home() {
       const res = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inputMode, rawInput, requestJson, extractorCode }),
+        body: JSON.stringify({ rawInput, requestJson, extractorCode }),
       });
       const data = (await res.json()) as ExecuteResponse;
       setResponse(data);
@@ -273,28 +276,7 @@ export default function Home() {
         <section className="panel">
           <div className="panel-header">
             <h2>Input</h2>
-            <div className="mode-toggle">
-              <label>
-                <input
-                  type="radio"
-                  name="inputMode"
-                  value="html"
-                  checked={inputMode === "html"}
-                  onChange={() => setInputMode("html")}
-                />
-                HTML
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="inputMode"
-                  value="json"
-                  checked={inputMode === "json"}
-                  onChange={() => setInputMode("json")}
-                />
-                JSON
-              </label>
-            </div>
+            <span className="detected-type">Detected: {detectedInputType}</span>
           </div>
           <textarea
             className="code-input"

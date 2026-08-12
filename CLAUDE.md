@@ -22,17 +22,19 @@ The app lets you paste an `extract(request, response)` function plus sample HTML
 
 Sitecore's real runtime hands the extractor an already-loaded document via `response.body`, and extractor code commonly does `$ = response.body;` then queries with `$('#selector')`. To match this:
 
-- For `inputMode === "html"`, `response.body` passed into the sandbox is **`cheerio.load(rawInput)`** (a callable cheerio instance), not the raw HTML string. Passing a plain string here reproduces the `TypeError: $ is not a function` bug this was fixed for.
-- For `inputMode === "json"`, `response.body` is the parsed JSON value.
-- The sandbox also pre-seeds a global `$` bound to the same loaded document, so extractor code that uses `$` directly (without reassigning from `response.body`) also works.
+- **Input type is autodetected in [route.ts](app/api/execute/route.ts), not chosen by the user.** `rawInput` is first run through `JSON.parse`; if that succeeds, the input is treated as JSON. If it throws, the input is treated as HTML. There is no `inputMode` field anywhere in the app (client or API) — do not reintroduce one without reason; a previous version had explicit HTML/JSON radio buttons and this was intentionally replaced with detection.
+- For HTML input, `response.body` passed into the sandbox is **`cheerio.load(rawInput)`** (a callable cheerio instance), not the raw HTML string. Passing a plain string here reproduces the `TypeError: $ is not a function` bug this was fixed for.
+- For JSON input, `response.body` is the parsed JSON value.
+- The sandbox also pre-seeds a global `$` bound to the same loaded document (only for HTML input), so extractor code that uses `$` directly (without reassigning from `response.body`) also works.
 - The extractor's `request` argument comes from the "Request object (optional)" textarea, parsed as JSON (defaults to `{}`).
 - Extractor code is expected to define a top-level `function extract(request, response) { ... }`; the route also supports `module.exports.extract`.
+- The client independently re-runs the same `JSON.parse` detection just to render the "Detected: HTML/JSON" label in the Input panel header — keep that logic in sync with the API's detection if either changes.
 
 When changing extractor execution behavior, keep both invocation styles (`$` global and `response.body`) working — real extractor scripts in `.claude/resources/pageExtractor/` rely on this pattern.
 
 ## Snapshots (localStorage)
 
-Save/load/rename/delete of full debugging sessions (input mode, raw input, request JSON, extractor code) is implemented entirely in [app/page.tsx](app/page.tsx) against `localStorage` under the key `sitecore-extractor-snapshots` — no backend involved. Renaming/saving over an existing name prompts for confirmation via `window.confirm` before overwriting.
+Save/load/rename/delete of full debugging sessions (raw input, request JSON, extractor code) is implemented entirely in [app/page.tsx](app/page.tsx) against `localStorage` under the key `sitecore-extractor-snapshots` — no backend involved. Saving over an existing name, renaming to a name that collides, and deleting all prompt for confirmation via `window.confirm` before proceeding.
 
 The "Extractor function" panel also has an **Update Snapshot** button for quickly persisting extractor-code edits back to the currently selected snapshot without going through rename/overwrite. Its enabled state is driven by an explicit `extractorDirty` boolean, not a derived comparison against the selected snapshot's stored code — a derived comparison would flip the button on/off based on how the newly selected snapshot's code happens to differ from whatever is currently in the textarea, rather than reflecting real user edits. `extractorDirty` is set `true` only by typing in the extractor textarea, and reset `false` on dropdown selection change, Load, Update, and Delete. Keep this behavior when touching the snapshot toolbar.
 
