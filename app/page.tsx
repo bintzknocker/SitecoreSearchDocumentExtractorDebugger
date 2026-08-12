@@ -177,6 +177,10 @@ export default function Home() {
   function deleteSnapshot() {
     const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
     if (!snapshot) return;
+
+    const confirmed = window.confirm(`Delete snapshot "${snapshot.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+
     const next = snapshots.filter((s) => s.id !== snapshot.id);
     setSnapshots(next);
     persistSnapshots(next);
