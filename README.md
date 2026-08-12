@@ -4,6 +4,9 @@ Helps with debugging Sitecore Search Document Extractors.
 
 Test a Sitecore Search [JavaScript document extractor](https://doc.sitecore.com/search/en/users/search-user-guide/configuring-document-extractors.html#using-a-javascript-document-extractor) function against sample HTML or JSON input, locally, without needing a live Sitecore Search crawl.
 
+**\*\*SECURITY NOTE**\*\*<br/>
+***This application is not meant to be deployed to a server.  Instead is meant to be run locally by developers for troubleshooting purposes.  The application contains some security vulnerabilities that could be compromised if deployed publicly.  (eg - Running malicious code inside the Request Extractor code.)  If the desire is to deploy this to a public server, do so at your own risk.***
+
 ## Getting started
 
 ```
