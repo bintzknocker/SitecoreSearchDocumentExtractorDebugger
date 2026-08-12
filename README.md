@@ -15,9 +15,7 @@ Open the printed URL (defaults to `http://localhost:3000`, falls back to the nex
 
 ## Using the tool
 
-1. **Paste your sample input** into the **Input** box. The tool auto-detects the type: if the input parses as valid JSON, it's treated as JSON; otherwise it's treated as HTML. A **Detected: HTML/JSON** label above the box shows which one was picked.
-
-The input should be either the source of the page that the crawler sends to the document extractor, or the Json from an API crawler.
+1. **Paste your sample input** into the **Input** box. The tool auto-detects the type: if the input parses as valid JSON, it's treated as JSON; otherwise it's treated as HTML. A **Detected: HTML/JSON** label above the box shows which one was picked.  The input should be either the source of the page that the crawler sends to the document extractor, or the Json from an API crawler.
 2. *(Optional)* Paste a **Request object** as JSON. This is passed as the `request` argument to your extractor function (defaults to `{}` if left blank).
 3. Paste your extractor function into the **Extractor function** box. It must define a top-level function:
    ```js
