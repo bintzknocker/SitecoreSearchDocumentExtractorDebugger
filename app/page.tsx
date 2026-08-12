@@ -115,6 +115,29 @@ export default function Home() {
     setExtractorCode(snapshot.extractorCode);
   }
 
+  function renameSnapshot() {
+    const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
+    if (!snapshot) return;
+
+    const newName = window.prompt("Rename snapshot to:", snapshot.name)?.trim();
+    if (!newName || newName === snapshot.name) return;
+
+    const conflict = snapshots.find((s) => s.name === newName && s.id !== snapshot.id);
+    if (conflict) {
+      const confirmed = window.confirm(
+        `A snapshot named "${newName}" already exists. Overwrite it?`
+      );
+      if (!confirmed) return;
+    }
+
+    const next = snapshots
+      .filter((s) => s.id !== conflict?.id)
+      .map((s) => (s.id === snapshot.id ? { ...s, name: newName } : s));
+
+    setSnapshots(next);
+    persistSnapshots(next);
+  }
+
   function deleteSnapshot() {
     const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
     if (!snapshot) return;
@@ -192,6 +215,9 @@ export default function Home() {
           </select>
           <button className="save-button" onClick={loadSnapshot} disabled={!selectedSnapshotId}>
             Load
+          </button>
+          <button className="save-button" onClick={renameSnapshot} disabled={!selectedSnapshotId}>
+            Rename
           </button>
           <button className="save-button" onClick={deleteSnapshot} disabled={!selectedSnapshotId}>
             Delete
