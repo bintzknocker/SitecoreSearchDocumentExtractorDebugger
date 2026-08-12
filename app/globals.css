@@ -153,3 +153,32 @@ h1 {
 .output.error {
   color: #f48771;
 }
+
+.snapshot-bar {
+  margin-bottom: 16px;
+}
+
+.snapshot-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snapshot-name-input,
+.snapshot-select {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.snapshot-name-input {
+  flex: 1 1 200px;
+}
+
+.snapshot-select {
+  flex: 1 1 260px;
+}

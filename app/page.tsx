@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const SNAPSHOTS_KEY = "sitecore-extractor-snapshots";
 
 const DEFAULT_EXTRACTOR = `function extract(request, response) {
     // response.body is your HTML string or parsed JSON object
@@ -31,6 +33,32 @@ interface ExecuteResponse {
   error: string | null;
 }
 
+interface Snapshot {
+  id: string;
+  name: string;
+  createdAt: number;
+  inputMode: InputMode;
+  rawInput: string;
+  requestJson: string;
+  extractorCode: string;
+}
+
+function loadSnapshots(): Snapshot[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(SNAPSHOTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSnapshots(snapshots: Snapshot[]) {
+  window.localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
+}
+
 export default function Home() {
   const [inputMode, setInputMode] = useState<InputMode>("html");
   const [rawInput, setRawInput] = useState(DEFAULT_HTML);
@@ -38,6 +66,63 @@ export default function Home() {
   const [extractorCode, setExtractorCode] = useState(DEFAULT_EXTRACTOR);
   const [response, setResponse] = useState<ExecuteResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [snapshotName, setSnapshotName] = useState("");
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState("");
+
+  useEffect(() => {
+    setSnapshots(loadSnapshots());
+  }, []);
+
+  function saveSnapshot() {
+    const name = snapshotName.trim();
+    if (!name) return;
+
+    const existing = snapshots.find((s) => s.name === name);
+    if (existing) {
+      const confirmed = window.confirm(
+        `A snapshot named "${name}" already exists. Overwrite it?`
+      );
+      if (!confirmed) return;
+    }
+
+    const newSnapshot: Snapshot = {
+      id: existing?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name,
+      createdAt: Date.now(),
+      inputMode,
+      rawInput,
+      requestJson,
+      extractorCode,
+    };
+
+    const next = existing
+      ? snapshots.map((s) => (s.id === existing.id ? newSnapshot : s))
+      : [...snapshots, newSnapshot];
+
+    setSnapshots(next);
+    persistSnapshots(next);
+    setSelectedSnapshotId(newSnapshot.id);
+  }
+
+  function loadSnapshot() {
+    const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
+    if (!snapshot) return;
+    setInputMode(snapshot.inputMode);
+    setRawInput(snapshot.rawInput);
+    setRequestJson(snapshot.requestJson);
+    setExtractorCode(snapshot.extractorCode);
+  }
+
+  function deleteSnapshot() {
+    const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
+    if (!snapshot) return;
+    const next = snapshots.filter((s) => s.id !== snapshot.id);
+    setSnapshots(next);
+    persistSnapshots(next);
+    setSelectedSnapshotId("");
+  }
 
   function saveResultToFile() {
     if (!response || response.error) return;
@@ -76,6 +161,43 @@ export default function Home() {
       <p className="subtitle">
         Test a document extractor function against sample HTML or JSON input.
       </p>
+
+      <section className="panel snapshot-bar">
+        <div className="panel-header">
+          <h2>Saved Snapshots</h2>
+        </div>
+        <div className="snapshot-controls">
+          <input
+            type="text"
+            className="snapshot-name-input"
+            placeholder="Snapshot name"
+            value={snapshotName}
+            onChange={(e) => setSnapshotName(e.target.value)}
+          />
+          <button className="save-button" onClick={saveSnapshot} disabled={!snapshotName.trim()}>
+            Save
+          </button>
+
+          <select
+            className="snapshot-select"
+            value={selectedSnapshotId}
+            onChange={(e) => setSelectedSnapshotId(e.target.value)}
+          >
+            <option value="">Select a snapshot…</option>
+            {snapshots.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({new Date(s.createdAt).toLocaleString()})
+              </option>
+            ))}
+          </select>
+          <button className="save-button" onClick={loadSnapshot} disabled={!selectedSnapshotId}>
+            Load
+          </button>
+          <button className="save-button" onClick={deleteSnapshot} disabled={!selectedSnapshotId}>
+            Delete
+          </button>
+        </div>
+      </section>
 
       <div className="grid">
         <section className="panel">
